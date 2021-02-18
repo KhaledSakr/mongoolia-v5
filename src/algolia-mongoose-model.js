@@ -83,12 +83,7 @@ export default function createAlgoliaMongooseModel({
           {
             [fieldName]: { $in: map(data.hits, "objectID") }
           },
-          reduce(
-            this.schema.obj,
-            (results: {}, val: {}, key: string) => ({ ...results, [key]: 1 }),
-            { [fieldName]: 1 }
-          )
-        );
+        ).lean();
 
         // add additional data from mongodb into Algolia hits
         const populatedHits = data.hits.map(hit => {
@@ -98,7 +93,7 @@ export default function createAlgoliaMongooseModel({
 
           return omit(
             {
-              ...(ogHit ? ogHit.toJSON() : {}),
+              ...(ogHit ? ogHit : {}),
               ...hit
             },
             [fieldName]
