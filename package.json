@@ -1,9 +1,9 @@
 {
   "name": "mongoolia-v5",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Keep your mongoose schemas synced with Algolia",
-  "homepage": "https://github.com/thedv91/mongoolia",
-  "repository": "thedv91/mongoolia",
+  "homepage": "https://github.com/KhaledSakr/mongoolia-v5",
+  "repository": "KhaledSakr/mongoolia-v5",
   "main": "dist/index.js",
   "author": "Algolia <support@algolia.com>",
   "license": "MIT",
