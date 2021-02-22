@@ -1,5 +1,5 @@
 /* @flow */
-import { reduce, omit, find, map, pick, zipWith } from 'lodash';
+import { omit, find, map, pick } from 'lodash';
 
 type AlgoliasearchClientIndex = {
   clearIndex: () => Promise<*>,
