@@ -47,8 +47,13 @@ const mongoolia: Mongoose$SchemaPlugin<MongooliaOpts> = function(
   // register hooks
   schema.post('save', doc => doc.postSaveHook());
   schema.post('update', doc => doc.postUpdateHook());
-  schema.post('findOneAndUpdate', doc => doc.postUpdateHook()); // Must pass new: true to findOneAndUpdate options
   schema.post('remove', doc => doc.postRemoveHook());
+  schema.post('findOneAndUpdate', async function (data) {
+    const doc = await this.model.findById(data._id);
+    if (doc) {
+      doc.postUpdateHook();
+    }
+  });
 };
 
 export default mongoolia;
