@@ -55,15 +55,23 @@ function createAlgoliaMongooseModel({
           [fieldName]: {
             $eq: null
           }
-        });
+        }).lean();
 
         const _ref = yield index.addObjects(docs.map(doc => (0, _lodash.pick)(doc, attributesToIndex))),
               objectIDs = _ref.objectIDs;
 
-        return yield Promise.all((0, _lodash.zipWith)(docs, objectIDs, (doc, _algoliaObjectID) => {
-          doc[fieldName] = _algoliaObjectID;
-          return doc.save();
-        }));
+        return yield _this2.bulkWrite(docs.map((doc, i) => ({
+          updateOne: {
+            filter: {
+              _id: doc._id
+            },
+            update: {
+              $set: {
+                [fieldName]: objectIDs[i]
+              }
+            }
+          }
+        })));
       })();
     } // * set one or more settings of the algolia index
 
@@ -93,7 +101,7 @@ function createAlgoliaMongooseModel({
           // find objects into mongodb matching `objectID` from Algolia search
           const hitsFromMongoose = yield _this3.find({
             [fieldName]: {
-              $in: (0, _lodash.map)(data.hits, "objectID")
+              $in: (0, _lodash.map)(data.hits, 'objectID')
             }
           }).lean(); // add additional data from mongodb into Algolia hits
 

@@ -1,5 +1,5 @@
 /* @flow */
-import { reduce, omit, find, map, pick, zipWith } from "lodash";
+import { reduce, omit, find, map, pick, zipWith } from 'lodash';
 
 type AlgoliasearchClientIndex = {
   clearIndex: () => Promise<*>,
@@ -7,17 +7,17 @@ type AlgoliasearchClientIndex = {
   saveObject: ({ objectID: string }) => Promise<*>,
   setSettings: ({}, { forwardToReplicas: boolean }) => Promise<*>,
   search: ({ query: string }) => Promise<*>,
-  deleteObject: string => Promise<*>
+  deleteObject: string => Promise<*>,
 };
 
 export default function createAlgoliaMongooseModel({
   index,
   attributesToIndex,
-  fieldName
+  fieldName,
 }: {
   index: AlgoliasearchClientIndex,
   attributesToIndex: string[],
-  fieldName: string
+  fieldName: string,
 }) {
   class AlgoliaMongooseModel {
     // properties comming from mongoose model after `.loadClass()`
@@ -45,16 +45,22 @@ export default function createAlgoliaMongooseModel({
     static async syncWithAlgolia({ force }: { force: boolean } = {}) {
       if (force) await this.clearAlgoliaIndex();
 
-      const docs = await this.find({ [fieldName]: { $eq: null } });
+      const docs = await this.find({ [fieldName]: { $eq: null } }).lean();
       const { objectIDs } = await index.addObjects(
         docs.map(doc => pick(doc, attributesToIndex))
       );
 
-      return await Promise.all(
-        zipWith(docs, objectIDs, (doc, _algoliaObjectID) => {
-          doc[fieldName] = _algoliaObjectID;
-          return doc.save();
-        })
+      return await this.bulkWrite(
+        docs.map((doc, i) => ({
+          updateOne: {
+            filter: { _id: doc._id },
+            update: {
+              $set: {
+                [fieldName]: objectIDs[i],
+              },
+            },
+          },
+        }))
       );
     }
 
@@ -67,11 +73,11 @@ export default function createAlgoliaMongooseModel({
     static async algoliaSearch({
       query,
       params,
-      populate
+      populate,
     }: {
       query: string,
       params: ?{},
-      populate: boolean
+      populate: boolean,
     }) {
       const searchParams = { ...params, query };
       const data = await index.search(searchParams);
@@ -79,22 +85,20 @@ export default function createAlgoliaMongooseModel({
       // * populate hits with content from mongodb
       if (populate) {
         // find objects into mongodb matching `objectID` from Algolia search
-        const hitsFromMongoose = await this.find(
-          {
-            [fieldName]: { $in: map(data.hits, "objectID") }
-          },
-        ).lean();
+        const hitsFromMongoose = await this.find({
+          [fieldName]: { $in: map(data.hits, 'objectID') },
+        }).lean();
 
         // add additional data from mongodb into Algolia hits
         const populatedHits = data.hits.map(hit => {
           const ogHit = find(hitsFromMongoose, {
-            [fieldName]: hit.objectID
+            [fieldName]: hit.objectID,
           });
 
           return omit(
             {
               ...(ogHit ? ogHit : {}),
-              ...hit
+              ...hit,
             },
             [fieldName]
           );
