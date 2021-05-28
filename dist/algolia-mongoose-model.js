@@ -7,6 +7,8 @@ exports.default = createAlgoliaMongooseModel;
 
 var _lodash = require("lodash");
 
+var _helpers = require("./helpers");
+
 function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; var ownKeys = Object.keys(source); if (typeof Object.getOwnPropertySymbols === 'function') { ownKeys = ownKeys.concat(Object.getOwnPropertySymbols(source).filter(function (sym) { return Object.getOwnPropertyDescriptor(source, sym).enumerable; })); } ownKeys.forEach(function (key) { _defineProperty(target, key, source[key]); }); } return target; }
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
@@ -17,9 +19,12 @@ function _asyncToGenerator(fn) { return function () { var self = this, args = ar
 
 function createAlgoliaMongooseModel({
   index,
-  attributesToIndex,
-  fieldName
+  attributesToIndex: originalAttributesToIndex,
+  fieldName,
+  populateSubfields
 }) {
+  const attributesToIndex = originalAttributesToIndex.concat(populateSubfields && populateSubfields.map(subfield => subfield.path) || []);
+
   class AlgoliaMongooseModel {
     // properties comming from mongoose model after `.loadClass()`
     // _algoliaObjectID: string;
@@ -51,13 +56,20 @@ function createAlgoliaMongooseModel({
 
       return _asyncToGenerator(function* () {
         if (force) yield _this2.clearAlgoliaIndex();
-        const docs = yield _this2.find({
+
+        let query = _this2.find({
           [fieldName]: {
             $eq: null
           }
-        }).lean();
+        });
 
-        const _ref = yield index.addObjects(docs.map(doc => (0, _lodash.pick)(doc, attributesToIndex))),
+        if (populateSubfields) {
+          query = query.populate(populateSubfields);
+        }
+
+        const docs = yield query.lean();
+
+        const _ref = yield index.addObjects(docs.map(doc => (0, _helpers.pick)(doc, attributesToIndex))),
               objectIDs = _ref.objectIDs;
 
         return yield _this2.bulkWrite(docs.map((doc, i) => ({
@@ -116,21 +128,35 @@ function createAlgoliaMongooseModel({
 
         return data;
       })();
+    }
+
+    prepareObject() {
+      var _this4 = this;
+
+      return _asyncToGenerator(function* () {
+        let objectToAdd = _this4.toJSON();
+
+        if (populateSubfields) {
+          objectToAdd = yield _this4.populate(populateSubfields).lean();
+        }
+
+        return (0, _helpers.pick)(objectToAdd, attributesToIndex);
+      })();
     } // * push new document to algolia
     // * update document with `_algoliaObjectID`
 
 
     addObjectToAlgolia() {
-      var _this4 = this;
+      var _this5 = this;
 
       return _asyncToGenerator(function* () {
-        const object = (0, _lodash.pick)(_this4.toJSON(), attributesToIndex);
+        const objectToAdd = yield prepareObject();
 
-        const _ref2 = yield index.addObject(object),
+        const _ref2 = yield index.addObject(objectToAdd),
               objectID = _ref2.objectID;
 
-        _this4.collection.updateOne({
-          _id: _this4._id
+        _this5.collection.updateOne({
+          _id: _this5._id
         }, {
           $set: {
             [fieldName]: objectID
@@ -141,22 +167,22 @@ function createAlgoliaMongooseModel({
 
 
     updateObjectToAlgolia() {
-      var _this5 = this;
+      var _this6 = this;
 
       return _asyncToGenerator(function* () {
-        const object = (0, _lodash.pick)(_this5.toJSON(), attributesToIndex);
-        yield index.saveObject(_objectSpread({}, object, {
-          objectID: _this5[fieldName]
+        const objectToAdd = yield prepareObject();
+        yield index.saveObject(_objectSpread({}, objectToAdd, {
+          objectID: _this6[fieldName]
         }));
       })();
     } // * delete object from algolia index
 
 
     deleteObjectFromAlgolia() {
-      var _this6 = this;
+      var _this7 = this;
 
       return _asyncToGenerator(function* () {
-        yield index.deleteObject(_this6[fieldName]);
+        yield index.deleteObject(_this7[fieldName]);
       })();
     } // * schema.post('save')
 

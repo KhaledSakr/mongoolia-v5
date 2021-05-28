@@ -30,7 +30,8 @@ const mongoolia = function mongoolia(schema, options) {
         apiKey = options.apiKey,
         indexName = options.indexName,
         _options$fieldName = options.fieldName,
-        fieldName = _options$fieldName === void 0 ? '_algoliaObjectID' : _options$fieldName; // add new Algolia objectID field
+        fieldName = _options$fieldName === void 0 ? '_algoliaObjectID' : _options$fieldName,
+        populateSubfields = options.populateSubfields; // add new Algolia objectID field
 
   schema.add({
     [fieldName]: {
@@ -47,7 +48,8 @@ const mongoolia = function mongoolia(schema, options) {
   schema.loadClass((0, _algoliaMongooseModel.default)({
     index,
     attributesToIndex,
-    fieldName
+    fieldName,
+    populateSubfields
   })); // register hooks
 
   schema.post('save', doc => doc.postSaveHook());

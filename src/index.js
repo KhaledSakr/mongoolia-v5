@@ -10,7 +10,8 @@ type MongooliaOpts = {
   appId: string,
   apiKey: string,
   indexName: string,
-  fieldName: string
+  fieldName: string,
+  populateSubfields?: { path: string, select: string }[],
 };
 
 const validateOpts = options => {
@@ -26,7 +27,13 @@ const mongoolia: Mongoose$SchemaPlugin<MongooliaOpts> = function(
 ) {
   validateOpts(options);
 
-  const { appId, apiKey, indexName, fieldName = '_algoliaObjectID' } = options;
+  const {
+    appId,
+    apiKey,
+    indexName,
+    fieldName = '_algoliaObjectID',
+    populateSubfields,
+  } = options;
   // add new Algolia objectID field
   schema.add({
     [fieldName]: { type: String, required: false, select: true },
@@ -42,7 +49,14 @@ const mongoolia: Mongoose$SchemaPlugin<MongooliaOpts> = function(
     (results, val, key) => (val.algoliaIndex ? [...results, key] : results),
     []
   );
-  schema.loadClass(createAlgoliaMongooseModel({ index, attributesToIndex, fieldName }));
+  schema.loadClass(
+    createAlgoliaMongooseModel({
+      index,
+      attributesToIndex,
+      fieldName,
+      populateSubfields,
+    })
+  );
 
   // register hooks
   schema.post('save', doc => doc.postSaveHook());

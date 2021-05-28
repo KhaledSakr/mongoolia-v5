@@ -1,5 +1,6 @@
 /* @flow */
-import { omit, find, map, pick } from 'lodash';
+import { omit, find, map } from 'lodash';
+import { pick } from './helpers';
 
 type AlgoliasearchClientIndex = {
   clearIndex: () => Promise<*>,
@@ -12,19 +13,26 @@ type AlgoliasearchClientIndex = {
 
 export default function createAlgoliaMongooseModel({
   index,
-  attributesToIndex,
+  attributesToIndex: originalAttributesToIndex,
   fieldName,
+  populateSubfields,
 }: {
   index: AlgoliasearchClientIndex,
   attributesToIndex: string[],
   fieldName: string,
+  populateSubfields?: { path: string, select: string }[],
 }) {
+  const attributesToIndex = originalAttributesToIndex.concat(
+    (populateSubfields && populateSubfields.map(subfield => subfield.path)) ||
+      []
+  );
   class AlgoliaMongooseModel {
     // properties comming from mongoose model after `.loadClass()`
     _id: MongoId;
     // _algoliaObjectID: string;
     collection: { update: ({ _id: MongoId }, {}) => Promise<*> };
     toJSON: () => JSON;
+    populate: () => Promise<*>;
 
     static schema: { obj: {} };
     static find: ({}, ?{}) => Promise<*>;
@@ -45,7 +53,11 @@ export default function createAlgoliaMongooseModel({
     static async syncWithAlgolia({ force }: { force: boolean } = {}) {
       if (force) await this.clearAlgoliaIndex();
 
-      const docs = await this.find({ [fieldName]: { $eq: null } }).lean();
+      let query = this.find({ [fieldName]: { $eq: null } });
+      if (populateSubfields) {
+        query = query.populate(populateSubfields);
+      }
+      const docs = await query.lean()
       const { objectIDs } = await index.addObjects(
         docs.map(doc => pick(doc, attributesToIndex))
       );
@@ -110,11 +122,19 @@ export default function createAlgoliaMongooseModel({
       return data;
     }
 
+    async prepareObject() {
+      let objectToAdd = this.toJSON();
+      if (populateSubfields) {
+        objectToAdd = await this.populate(populateSubfields).lean();
+      }
+      return pick(objectToAdd, attributesToIndex);
+    }
+
     // * push new document to algolia
     // * update document with `_algoliaObjectID`
     async addObjectToAlgolia() {
-      const object = pick(this.toJSON(), attributesToIndex);
-      const { objectID } = await index.addObject(object);
+      const objectToAdd = await prepareObject();
+      const { objectID } = await index.addObject(objectToAdd);
 
       this.collection.updateOne(
         { _id: this._id },
@@ -124,8 +144,8 @@ export default function createAlgoliaMongooseModel({
 
     // * update object into algolia index
     async updateObjectToAlgolia() {
-      const object = pick(this.toJSON(), attributesToIndex);
-      await index.saveObject({ ...object, objectID: this[fieldName] });
+      const objectToAdd = await prepareObject();
+      await index.saveObject({ ...objectToAdd, objectID: this[fieldName] });
     }
 
     // * delete object from algolia index
