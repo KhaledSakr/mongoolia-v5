@@ -150,7 +150,7 @@ function createAlgoliaMongooseModel({
       var _this5 = this;
 
       return _asyncToGenerator(function* () {
-        const objectToAdd = yield prepareObject();
+        const objectToAdd = yield _this5.prepareObject();
 
         const _ref2 = yield index.addObject(objectToAdd),
               objectID = _ref2.objectID;
@@ -170,7 +170,7 @@ function createAlgoliaMongooseModel({
       var _this6 = this;
 
       return _asyncToGenerator(function* () {
-        const objectToAdd = yield prepareObject();
+        const objectToAdd = yield _this6.prepareObject();
         yield index.saveObject(_objectSpread({}, objectToAdd, {
           objectID: _this6[fieldName]
         }));

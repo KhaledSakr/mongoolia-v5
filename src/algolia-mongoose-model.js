@@ -133,7 +133,7 @@ export default function createAlgoliaMongooseModel({
     // * push new document to algolia
     // * update document with `_algoliaObjectID`
     async addObjectToAlgolia() {
-      const objectToAdd = await prepareObject();
+      const objectToAdd = await this.prepareObject();
       const { objectID } = await index.addObject(objectToAdd);
 
       this.collection.updateOne(
@@ -144,7 +144,7 @@ export default function createAlgoliaMongooseModel({
 
     // * update object into algolia index
     async updateObjectToAlgolia() {
-      const objectToAdd = await prepareObject();
+      const objectToAdd = await this.prepareObject();
       await index.saveObject({ ...objectToAdd, objectID: this[fieldName] });
     }
 
