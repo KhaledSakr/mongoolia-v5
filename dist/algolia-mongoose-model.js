@@ -134,11 +134,11 @@ function createAlgoliaMongooseModel({
       var _this4 = this;
 
       return _asyncToGenerator(function* () {
-        let objectToAdd = _this4.toJSON();
-
         if (populateSubfields) {
-          objectToAdd = yield _this4.populate(populateSubfields).lean();
+          yield _this4.populate(populateSubfields).execPopulate();
         }
+
+        let objectToAdd = _this4.toJSON();
 
         return (0, _helpers.pick)(objectToAdd, attributesToIndex);
       })();
