@@ -123,10 +123,12 @@ export default function createAlgoliaMongooseModel({
     }
 
     async prepareObject() {
+      let objectToAdd = null;
       if (populateSubfields) {
-        await this.populate(populateSubfields).execPopulate();
+        objectToAdd = await this.constructor.findById(this._id).populate(populateSubfields).lean();
+      } else {
+        objectToAdd = this.toJSON();
       }
-      let objectToAdd = this.toJSON();
       return pick(objectToAdd, attributesToIndex);
     }
 
