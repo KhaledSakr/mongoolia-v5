@@ -57,7 +57,7 @@ export default function createAlgoliaMongooseModel({
       if (populateSubfields) {
         query = query.populate(populateSubfields);
       }
-      const docs = await query.lean()
+      const docs = await query.lean();
       const { objectIDs } = await index.addObjects(
         docs.map(doc => pick(doc, attributesToIndex))
       );
@@ -135,24 +135,36 @@ export default function createAlgoliaMongooseModel({
     // * push new document to algolia
     // * update document with `_algoliaObjectID`
     async addObjectToAlgolia() {
-      const objectToAdd = await this.prepareObject();
-      const { objectID } = await index.addObject(objectToAdd);
+      try {
+        const objectToAdd = await this.prepareObject();
+        const { objectID } = await index.addObject(objectToAdd);
 
-      this.collection.updateOne(
-        { _id: this._id },
-        { $set: { [fieldName]: objectID } }
-      );
+        this.collection.updateOne(
+          { _id: this._id },
+          { $set: { [fieldName]: objectID } }
+        );
+      } catch (err) {
+        console.error('[Mongoolia]: addObjectToAlgolia: ', err);
+      }
     }
 
     // * update object into algolia index
     async updateObjectToAlgolia() {
-      const objectToAdd = await this.prepareObject();
-      await index.saveObject({ ...objectToAdd, objectID: this[fieldName] });
+      try {
+        const objectToAdd = await this.prepareObject();
+        await index.saveObject({ ...objectToAdd, objectID: this[fieldName] });
+      } catch (err) {
+        console.error('[Mongoolia]: updateObjectToAlgolia: ', err);
+      }
     }
 
     // * delete object from algolia index
     async deleteObjectFromAlgolia() {
-      await index.deleteObject(this[fieldName]);
+      try {
+        await index.deleteObject(this[fieldName]);
+      } catch (err) {
+        console.error('[Mongoolia]: deleteObjectFromAlgolia: ', err);
+      }
     }
 
     // * schema.post('save')
